@@ -27,6 +27,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 const PORT = process.env.PORT || 1002;
 const URI = process.env.URI;
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+console.log("Configured CLIENT_URL:", process.env.CLIENT_URL);
 
 // MongoDB connection
 mongoose.connect(URI).then(() => {

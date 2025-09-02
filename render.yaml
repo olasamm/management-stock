@@ -18,7 +18,7 @@ services:
       - key: EMAIL_PASSWORD
         sync: false
       - key: CLIENT_URL
-        value: https://stock-management-rosy.vercel.app
+        value: https://management-stock-theta.vercel.app
       - key: NPM_CONFIG_AUDIT
         value: "false"
       - key: NPM_CONFIG_FUND

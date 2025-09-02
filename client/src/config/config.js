@@ -29,4 +29,4 @@ export const API_ENDPOINTS = {
 };
 
 // Frontend URL for invitation links
-export const FRONTEND_URL = 'https://stock-management-rosy.vercel.app';
+export const FRONTEND_URL = 'https://management-stock-theta.vercel.app';

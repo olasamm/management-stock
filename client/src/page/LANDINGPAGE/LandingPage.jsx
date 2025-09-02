@@ -1,6 +1,7 @@
 import React from 'react';
 import { FaChartLine, FaBoxes, FaUsers, FaShieldAlt, FaRocket, FaCheckCircle } from 'react-icons/fa';
 import './LandingPage.css';
+import { Link } from 'react-router-dom';
 
 const LandingPage = () => {
   return (
@@ -155,7 +156,11 @@ const LandingPage = () => {
           <h2>Ready to Transform Your Stock Management?</h2>
           <p>Join thousands of businesses already using StockMaster to streamline their operations</p>
           <div className="cta-buttons">
-                         <a href="/company-registration" className="cta-btn primary">Get Started Free</a>
+            <Link to="/company-registration">
+            <button className="cta-btn primary">Get Started Free</button>
+
+              {/* <a href="/company-registration" className="cta-btn primary">Get Started Free</a> */}
+              </Link>
              <a href="/company-login" className="cta-btn secondary">Company Login</a>
           </div>
         </div>

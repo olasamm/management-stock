@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS } from '../../config/config';
 import './CompanyRegistration.css';
+import { Link } from 'react-router-dom';
 
 const CompanyRegistration = () => {
   const navigate = useNavigate();

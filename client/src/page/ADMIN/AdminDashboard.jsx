@@ -7,36 +7,22 @@ const AdminDashboard = () => {
   const [admin, setAdmin] = useState(null);
   const [companies, setCompanies] = useState([]);
   const [users, setUsers] = useState([]);
-  const [stats, setStats] = useState({});
+  const [stats, setStats] = useState({ totalCompanies: 0, activeCompanies: 0, pendingCompanies: 0, totalUsers: 0, activeUsers: 0, totalRevenue: 0 });
 
   useEffect(() => {
-    // Get admin data from localStorage
-    const adminData = localStorage.getItem('admin');
-    if (adminData) {
-      setAdmin(JSON.parse(adminData));
+    // Get admin data from localStorage (system admin)
+    const raw = localStorage.getItem('admin');
+    if (raw) {
+      const a = JSON.parse(raw);
+      setAdmin({
+        ...a,
+        name: a.name || `${a.firstName || ''} ${a.lastName || ''}`.trim()
+      });
     }
-    
-    // Mock data for now - replace with API calls
-    setCompanies([
-      { id: 1, name: 'TechCorp Solutions', email: 'admin@techcorp.com', status: 'Active', users: 8, created: '2024-01-01' },
-      { id: 2, name: 'Digital Innovations', email: 'boss@digital.com', status: 'Active', users: 5, created: '2024-01-05' },
-      { id: 3, name: 'Smart Systems', email: 'admin@smart.com', status: 'Pending', users: 3, created: '2024-01-10' },
-    ]);
-    
-    setUsers([
-      { id: 1, name: 'John Doe', email: 'john@techcorp.com', company: 'TechCorp Solutions', role: 'Sales Person', status: 'Active' },
-      { id: 2, name: 'Jane Smith', email: 'jane@techcorp.com', company: 'TechCorp Solutions', role: 'Sales Person', status: 'Active' },
-      { id: 3, name: 'Mike Johnson', email: 'mike@digital.com', company: 'Digital Innovations', role: 'Sales Person', status: 'Active' },
-    ]);
-    
-    setStats({
-      totalCompanies: 3,
-      activeCompanies: 2,
-      pendingCompanies: 1,
-      totalUsers: 16,
-      activeUsers: 15,
-      totalRevenue: 0, // Platform revenue
-    });
+    // TODO: Wire real API to populate companies/users/stats when endpoints exist
+    setCompanies([]);
+    setUsers([]);
+    setStats(s => ({ ...s }));
   }, []);
 
   const handleLogout = () => {
@@ -107,6 +93,9 @@ const AdminDashboard = () => {
     <div className="companies-section">
       <h2>Company Management</h2>
       <div className="table-container">
+        {companies.length === 0 ? (
+          <div className="empty-state" style={{ padding: '1rem' }}>No companies yet.</div>
+        ) : (
         <table className="admin-table">
           <thead>
             <tr>
@@ -156,6 +145,7 @@ const AdminDashboard = () => {
             ))}
           </tbody>
         </table>
+        )}
       </div>
     </div>
   );
@@ -164,6 +154,9 @@ const AdminDashboard = () => {
     <div className="users-section">
       <h2>User Management</h2>
       <div className="table-container">
+        {users.length === 0 ? (
+          <div className="empty-state" style={{ padding: '1rem' }}>No users yet.</div>
+        ) : (
         <table className="admin-table">
           <thead>
             <tr>
@@ -211,6 +204,7 @@ const AdminDashboard = () => {
             ))}
           </tbody>
         </table>
+        )}
       </div>
     </div>
   );

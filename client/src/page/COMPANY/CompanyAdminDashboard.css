@@ -535,6 +535,70 @@ td {
   margin: 0 0 1rem 0;
 }
 
+/* Reports filters and actions */
+.filters-row {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.filters-row label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+.filters-row select,
+.filters-row input[type="date"] {
+  padding: 0.5rem 0.75rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  background: white;
+  min-width: 180px;
+}
+
+.filters-row select:focus,
+.filters-row input[type="date"]:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.filters-row button {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  padding: 0.6rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.filters-row button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+.trend-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+}
+
+.trend-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  background: #f9fafb;
+  border-radius: 0.5rem;
+  color: #374151;
+}
+
 .generate-report-btn {
   background: #667eea;
   color: white;

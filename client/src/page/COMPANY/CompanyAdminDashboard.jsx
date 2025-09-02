@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FaBoxes, FaUsers, FaChartLine, FaPlus, FaSearch, FaFilter, FaSignOutAlt, FaUser, FaBell, FaCog, FaUpload, FaEdit, FaTrash, FaEye } from 'react-icons/fa';
 import { useNavigate, useParams } from 'react-router-dom';
 import { API_ENDPOINTS } from '../../config/config';
@@ -14,6 +14,8 @@ const CompanyAdminDashboard = () => {
   const [stockItems, setStockItems] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [sales, setSales] = useState([]);
+  const salesFirstLoadRef = useRef(true);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [showInviteMemberModal, setShowInviteMemberModal] = useState(false);
@@ -117,6 +119,20 @@ const CompanyAdminDashboard = () => {
           console.error('Error fetching team members:', error);
           setTeamMembers([]);
         }
+
+        try {
+          // Fetch sales
+          const salesResponse = await fetch(`${API_ENDPOINTS.STOCK_ITEMS.replace('/stock-items','/sales')}/${targetId}`);
+          if (salesResponse.ok) {
+            const salesData = await salesResponse.json();
+            setSales(Array.isArray(salesData.sales) ? salesData.sales : []);
+          } else {
+            setSales([]);
+          }
+        } catch (error) {
+          console.error('Error fetching sales:', error);
+          setSales([]);
+        }
       }
       
       setIsLoading(false);
@@ -125,6 +141,43 @@ const CompanyAdminDashboard = () => {
       setIsLoading(false);
     }
   };
+
+  // Generate notifications for new sales
+  useEffect(() => {
+    if (salesFirstLoadRef.current) {
+      // Skip notifications on first load to avoid flooding
+      salesFirstLoadRef.current = false;
+      // Seed seen sales
+      const seen = new Set((JSON.parse(localStorage.getItem('seenSales') || '[]')));
+      const allIds = sales.map(s => s._id || s.id).filter(Boolean);
+      localStorage.setItem('seenSales', JSON.stringify(Array.from(new Set([...seen, ...allIds]))));
+      return;
+    }
+
+    const seen = new Set((JSON.parse(localStorage.getItem('seenSales') || '[]')));
+    const newSales = sales.filter(s => {
+      const id = s._id || s.id;
+      return id && !seen.has(id);
+    });
+
+    if (newSales.length === 0) return;
+
+    const newNotifs = newSales.slice(0, 20).map(s => ({
+      id: (s._id || s.id) + '-sale',
+      message: `New sale: ${(s.itemId?.name || 'Item')} x${s.quantity} for # ${s.total || s.price * s.quantity}`,
+      time: (s.createdAt || '').slice(0,16).replace('T',' '),
+      read: false
+    }));
+
+    setNotifications(prev => [...newNotifs, ...prev].slice(0, 100));
+
+    // Update seen
+    newSales.forEach(s => {
+      const id = s._id || s.id;
+      if (id) seen.add(id);
+    });
+    localStorage.setItem('seenSales', JSON.stringify(Array.from(seen)));
+  }, [sales]);
 
   const handleLogout = () => {
     localStorage.removeItem('admin');
@@ -485,7 +538,7 @@ const CompanyAdminDashboard = () => {
           onDeleteCategory={handleDeleteCategory}
         />;
       case 'reports':
-        return <ReportsTab />;
+        return <ReportsTab stockItems={stockItems} sales={sales} categories={categories} />;
       default:
         return <OverviewTab company={company} stockItems={stockItems} teamMembers={teamMembers} />;
     }
@@ -910,29 +963,180 @@ const CategoriesTab = ({ categories, onAddCategory, onEditCategory, onDeleteCate
   </div>
 );
 
-const ReportsTab = () => (
-  <div className="reports-tab">
-    <h2>Reports & Analytics</h2>
-    
-    <div className="reports-grid">
-      <div className="report-card">
-        <h3>Sales Report</h3>
-        <p>Monthly sales performance</p>
-        <button className="generate-report-btn">Generate Report</button>
+const ReportsTab = ({ stockItems, sales, categories }) => {
+  const [range, setRange] = useState('7'); // 7, 30, all
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+
+  const inRange = (dStr) => {
+    if (!dStr) return false;
+    const d = new Date(dStr);
+    if (from) {
+      const f = new Date(from);
+      if (d < f) return false;
+    }
+    if (to) {
+      const t = new Date(to);
+      t.setHours(23,59,59,999);
+      if (d > t) return false;
+    }
+    if (!from && !to && range !== 'all') {
+      const days = parseInt(range, 10);
+      const start = new Date();
+      start.setDate(start.getDate() - days + 1);
+      start.setHours(0,0,0,0);
+      return d >= start;
+    }
+    return true;
+  };
+
+  const filteredSales = sales.filter(s => inRange(s.createdAt));
+
+  const totalProducts = stockItems.length;
+  const lowStock = stockItems.filter(i => i.status === 'Low Stock').length;
+  const outOfStock = stockItems.filter(i => i.status === 'Out of Stock').length;
+  const totalCategories = categories.length;
+  const totalSales = filteredSales.length;
+  const revenue = filteredSales.reduce((sum, s) => sum + (s.total || 0), 0);
+
+  // Top 5 products by qty and revenue
+  const byProduct = {};
+  filteredSales.forEach(s => {
+    const name = s.itemId?.name || 'Item';
+    if (!byProduct[name]) byProduct[name] = { qty: 0, revenue: 0 };
+    byProduct[name].qty += s.quantity || 0;
+    byProduct[name].revenue += s.total || 0;
+  });
+  const topByQty = Object.entries(byProduct)
+    .sort((a,b) => b[1].qty - a[1].qty)
+    .slice(0,5);
+  const topByRevenue = Object.entries(byProduct)
+    .sort((a,b) => b[1].revenue - a[1].revenue)
+    .slice(0,5);
+
+  // Daily trend (last N days)
+  const dayKey = (d) => d.slice(0,10);
+  const trendMap = new Map();
+  filteredSales.forEach(s => {
+    const k = dayKey(s.createdAt || '');
+    if (!k) return;
+    const cur = trendMap.get(k) || { count: 0, revenue: 0 };
+    cur.count += 1;
+    cur.revenue += s.total || 0;
+    trendMap.set(k, cur);
+  });
+  const trend = Array.from(trendMap.entries())
+    .sort((a,b) => a[0].localeCompare(b[0]))
+    .slice(-30);
+
+  // CSV export
+  const exportCsv = () => {
+    const headers = ['Date','Item','Quantity','Price','Total'];
+    const rows = filteredSales.map(s => [
+      (s.createdAt || '').replace('T',' ').slice(0,19),
+      s.itemId?.name || 'Item',
+      s.quantity,
+      s.price,
+      s.total
+    ]);
+    const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sales_${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="reports-tab">
+      <h2>Reports & Analytics</h2>
+
+      <div className="filters-row">
+        <label>
+          Quick Range:
+          <select value={range} onChange={e => setRange(e.target.value)}>
+            <option value="7">Last 7 days</option>
+            <option value="30">Last 30 days</option>
+            <option value="all">All time</option>
+          </select>
+        </label>
+        <label>
+          From:
+          <input type="date" value={from} onChange={e => setFrom(e.target.value)} />
+        </label>
+        <label>
+          To:
+          <input type="date" value={to} onChange={e => setTo(e.target.value)} />
+        </label>
+        <button onClick={exportCsv}>Export CSV</button>
       </div>
-      <div className="report-card">
-        <h3>Stock Report</h3>
-        <p>Inventory levels and trends</p>
-        <button className="generate-report-btn">Generate Report</button>
-      </div>
-      <div className="report-card">
-        <h3>Team Performance</h3>
-        <p>Sales team metrics</p>
-        <button className="generate-report-btn">Generate Report</button>
+
+      <div className="reports-grid">
+        <div className="report-card">
+          <h3>Overview</h3>
+          <p>Total Products: {totalProducts}</p>
+          <p>Low Stock: {lowStock}</p>
+          <p>Out of Stock: {outOfStock}</p>
+          <p>Total Categories: {totalCategories}</p>
+        </div>
+
+        <div className="report-card">
+          <h3>Sales</h3>
+          <p>Total Sales: {totalSales}</p>
+          <p>Total Revenue: # {revenue}</p>
+        </div>
+
+        <div className="report-card">
+          <h3>Top Products (Qty)</h3>
+          <ul>
+            {topByQty.map(([name, v]) => (
+              <li key={name}>{name}: {v.qty}</li>
+            ))}
+            {topByQty.length === 0 && <li>No data</li>}
+          </ul>
+        </div>
+
+        <div className="report-card">
+          <h3>Top Products (Revenue)</h3>
+          <ul>
+            {topByRevenue.map(([name, v]) => (
+              <li key={name}>{name}: # {v.revenue}</li>
+            ))}
+            {topByRevenue.length === 0 && <li>No data</li>}
+          </ul>
+        </div>
+
+        <div className="report-card">
+          <h3>Daily Sales Trend</h3>
+          <div className="trend-list">
+            {trend.map(([day, v]) => (
+              <div key={day} className="trend-row">
+                <span>{day}</span>
+                <span>{v.count} sales</span>
+                <span># {v.revenue}</span>
+              </div>
+            ))}
+            {trend.length === 0 && <div>No data</div>}
+          </div>
+        </div>
+
+        <div className="report-card">
+          <h3>Recent Sales</h3>
+          <ul>
+            {filteredSales.slice(0, 10).map(s => (
+              <li key={s._id || s.id}>
+                {s.itemId?.name || 'Item'} x{s.quantity} − # {s.total} ({(s.createdAt || '').slice(0,10)})
+              </li>
+            ))}
+            {filteredSales.length === 0 && <li>No sales in range.</li>}
+          </ul>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 // Modal Components
 const AddProductModal = ({ onClose, onAdd }) => {

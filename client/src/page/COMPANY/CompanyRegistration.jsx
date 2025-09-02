@@ -305,7 +305,7 @@ const CompanyRegistration = () => {
             Already have a company account?{' '}
             <Link to="/company-login">
 
-                         <a href="">Sign in here</a>
+                 <p>Sign in here</p>
              </Link>
           </p>
         </div>

@@ -161,7 +161,10 @@ const LandingPage = () => {
 
               {/* <a href="/company-registration" className="cta-btn primary">Get Started Free</a> */}
               </Link>
-             <a href="/company-login" className="cta-btn secondary">Company Login</a>
+              <Link to="/company-login">
+               <button className="cta-btn secondary">Company Login</button>
+             {/* <a href="/company-login" className="cta-btn secondary">Company Login</a> */}
+             </Link>
           </div>
         </div>
       </section>

@@ -1,0 +1,15 @@
+# MongoDB Connection
+URI=mongodb://localhost:27017/stock_management
+
+# Server Configuration
+PORT=1000
+
+# JWT Secret (change this in production)
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+
+# Email Configuration (Gmail)
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASSWORD=your-gmail-app-password
+
+# Client URL (for invitation links)
+CLIENT_URL=http://localhost:3000

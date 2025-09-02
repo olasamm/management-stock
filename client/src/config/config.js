@@ -1,5 +1,5 @@
 // API Configuration
-export const API_BASE_URL = 'https://stock-management-0ywb.onrender.com';
+export const API_BASE_URL = 'https://management-stock-1.onrender.com';
 
 // API Endpoints
 export const API_ENDPOINTS = {

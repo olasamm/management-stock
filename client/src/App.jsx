@@ -1,5 +1,5 @@
 import React from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import LandingPage from './page/LANDINGPAGE/LandingPage'
 import './App.css'
 
@@ -16,6 +16,16 @@ import TeamLogin from './page/COMPANY/TeamLogin'
 import Dashboard from './page/USER/Dashboard'
 import AdminDashboard from './page/ADMIN/AdminDashboard'
 
+// Simple guard to require company admin auth
+const RequireAdmin = ({ children }) => {
+  const admin = localStorage.getItem('admin')
+  const token = localStorage.getItem('token')
+  if (!admin || !token) {
+    return <Navigate to="/company-login" replace />
+  }
+  return children
+}
+
 function App() {
   return (
     
@@ -28,8 +38,9 @@ function App() {
       <Route path='/company-registration' element={<CompanyRegistration />} />
       <Route path='/company-login' element={<CompanyLogin />} />
       <Route path='/user-dashboard' element={<Dashboard />} />
+      <Route path='/company/:companyId/dashboard' element={<Dashboard />} />
       <Route path='/admin-dashboard' element={<AdminDashboard />} />
-      <Route path='/company-admin-dashboard' element={<CompanyAdminDashboard />} />
+      <Route path='/company-admin-dashboard/:companyId' element={<RequireAdmin><CompanyAdminDashboard /></RequireAdmin>} />
       <Route path='/accept-invitation/:token' element={<AcceptInvitation />} />
       <Route path='/team-login' element={<TeamLogin />} />
 

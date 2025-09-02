@@ -85,7 +85,7 @@ const AdminDashboard = () => {
         </div>
         <div className="stat-content">
           <h3>Platform Revenue</h3>
-          <p className="stat-number">${stats.totalRevenue}</p>
+          <p className="stat-number"># {stats.totalRevenue}</p>
           <p className="stat-detail">Monthly earnings</p>
         </div>
       </div>

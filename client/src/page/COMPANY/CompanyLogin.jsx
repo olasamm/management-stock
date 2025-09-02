@@ -27,7 +27,7 @@ const CompanyLogin = () => {
     setMessage({ text: '', type: '' });
 
     try {
-              const response = await fetch('https://stock-management-0ywb.onrender.com/company-login', {
+              const response = await fetch('https://management-stock-1.onrender.com/company-login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -44,9 +44,9 @@ const CompanyLogin = () => {
         
         setMessage({ text: 'Login successful! Redirecting...', type: 'success' });
         
-        // Redirect to company admin dashboard
+        // Redirect to company admin dashboard with companyId in path
         setTimeout(() => {
-          navigate('/company-admin-dashboard');
+          navigate(`/company-admin-dashboard/${data.companyAdmin.companyId}`);
         }, 1500);
       } else {
         setMessage({ text: data.message || 'Login failed', type: 'error' });

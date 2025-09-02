@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FaBoxes, FaUsers, FaChartLine, FaPlus, FaSearch, FaFilter, FaSignOutAlt, FaUser, FaBell, FaCog, FaUpload, FaEdit, FaTrash, FaEye } from 'react-icons/fa';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { API_ENDPOINTS } from '../../config/config';
 import './CompanyAdminDashboard.css';
 
@@ -32,41 +32,50 @@ const CompanyAdminDashboard = () => {
   ]);
   const [successMessage, setSuccessMessage] = useState('');
 
+  const { companyId: routeCompanyId } = useParams();
+
   useEffect(() => {
-    // Get company admin data from localStorage
+    // Prefer admin context; fall back to team member so both dashboards point to same company
     const adminData = localStorage.getItem('admin');
     const token = localStorage.getItem('token');
-    
+    const teamData = localStorage.getItem('teamMember');
+
     if (adminData && token) {
       const adminInfo = JSON.parse(adminData);
       setAdmin(adminInfo);
-      
-      // Set company data from admin info
       setCompany({
-        id: adminInfo.companyId,
+        id: routeCompanyId || adminInfo.companyId,
         companyName: adminInfo.companyName,
-        industry: 'Electronics & Technology', // This would come from API
+        industry: 'Electronics & Technology',
         companyEmail: adminInfo.email,
         status: 'active',
         subscription: 'free'
       });
-      
-      // Load dashboard data
-      loadDashboardData();
+      loadDashboardData(routeCompanyId || adminInfo.companyId);
+    } else if (teamData) {
+      // Use team member’s company so data matches the team dashboard
+      const member = JSON.parse(teamData);
+      setCompany({
+        id: routeCompanyId || member.companyId,
+        companyName: member.companyName,
+        status: 'active',
+        subscription: 'free'
+      });
+      loadDashboardData(routeCompanyId || member.companyId);
     } else {
-      // Redirect to company login if no admin data
       navigate('/company-login');
       return;
     }
-  }, [navigate]);
+  }, [navigate, routeCompanyId]);
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = async (targetIdParam) => {
     try {
       // Fetch real data from API
-      if (company?.id) {
+      const targetId = targetIdParam || company?.id;
+      if (targetId) {
         try {
           // Fetch stock items
-          const stockResponse = await fetch(`${API_ENDPOINTS.STOCK_ITEMS}/${company.id}`);
+          const stockResponse = await fetch(`${API_ENDPOINTS.STOCK_ITEMS}/${targetId}`);
           if (stockResponse.ok) {
             const stockData = await stockResponse.json();
             setStockItems(stockData.stockItems);
@@ -81,7 +90,7 @@ const CompanyAdminDashboard = () => {
 
         try {
           // Fetch categories
-          const categoryResponse = await fetch(`${API_ENDPOINTS.CATEGORIES}/${company.id}`);
+          const categoryResponse = await fetch(`${API_ENDPOINTS.CATEGORIES}/${targetId}`);
           if (categoryResponse.ok) {
             const categoryData = await categoryResponse.json();
             setCategories(categoryData.categories);
@@ -96,7 +105,7 @@ const CompanyAdminDashboard = () => {
 
         try {
           // Fetch team members
-          const teamResponse = await fetch(`${API_ENDPOINTS.TEAM_MEMBERS}/${company.id}`);
+          const teamResponse = await fetch(`${API_ENDPOINTS.TEAM_MEMBERS}/${targetId}`);
           if (teamResponse.ok) {
             const teamData = await teamResponse.json();
             setTeamMembers(teamData.teamMembers);
@@ -144,8 +153,8 @@ const CompanyAdminDashboard = () => {
       });
 
       if (response.ok) {
-        const deletedItem = stockItems.find(item => item.id === itemId);
-        setStockItems(stockItems.filter(item => item.id !== itemId));
+        const deletedItem = stockItems.find(item => (item._id || item.id) === itemId);
+        setStockItems(stockItems.filter(item => (item._id || item.id) !== itemId));
         setSuccessMessage(`${deletedItem?.name || 'Product'} deleted successfully`);
         setTimeout(() => setSuccessMessage(''), 3000);
       } else {
@@ -162,7 +171,7 @@ const CompanyAdminDashboard = () => {
 
   const handleUpdateProduct = async (updatedProduct) => {
     try {
-      const response = await fetch(`${API_ENDPOINTS.STOCK_ITEMS}/${updatedProduct.id}`, {
+      const response = await fetch(`${API_ENDPOINTS.STOCK_ITEMS}/${updatedProduct._id || updatedProduct.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -172,9 +181,11 @@ const CompanyAdminDashboard = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setStockItems(stockItems.map(item => 
-          item.id === updatedProduct.id ? data.stockItem : item
-        ));
+        setStockItems(stockItems.map(item => {
+          const key = item._id || item.id;
+          const updatedKey = updatedProduct._id || updatedProduct.id;
+          return key === updatedKey ? data.stockItem : item;
+        }));
         setShowEditProductModal(false);
         setEditingItem(null);
         setSuccessMessage(`${updatedProduct.name} updated successfully`);
@@ -777,7 +788,7 @@ const StockTab = ({ stockItems, searchTerm, onSearch, filterCategory, onFilterCh
         </thead>
         <tbody>
           {stockItems.map(item => (
-            <tr key={item.id}>
+            <tr key={item._id || item.id}>
               <td className="product-cell">
                 <img src={item.image} alt={item.name} className="product-image" />
                 <span>{item.name}</span>
@@ -785,7 +796,7 @@ const StockTab = ({ stockItems, searchTerm, onSearch, filterCategory, onFilterCh
               <td>{item.category}</td>
               <td>{item.subcategory}</td>
               <td>{item.quantity}</td>
-              <td>${item.price}</td>
+              <td># {item.price}</td>
               <td>
                 <span className={`status-badge ${getStatusColor(item.status)}`}>
                   {item.status}
@@ -801,7 +812,7 @@ const StockTab = ({ stockItems, searchTerm, onSearch, filterCategory, onFilterCh
                 <button 
                   className="action-btn delete" 
                   title="Delete this product permanently" 
-                  onClick={() => onDeleteProduct(item.id)}
+                  onClick={() => onDeleteProduct(item._id || item.id)}
                 >
                   <FaTrash />
                 </button>
@@ -994,7 +1005,7 @@ const AddProductModal = ({ onClose, onAdd }) => {
               />
             </div>
             <div className="form-group">
-              <label>Price ($)</label>
+              <label>Price (#)</label>
               <input
                 type="number"
                 value={formData.price}
@@ -1229,7 +1240,7 @@ const EditProductModal = ({ item, onClose, onUpdate }) => {
               />
             </div>
             <div className="form-group">
-              <label>Price ($)</label>
+              <label>Price (#)</label>
               <input
                 type="number"
                 value={formData.price}

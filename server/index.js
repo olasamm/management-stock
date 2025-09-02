@@ -13,6 +13,7 @@ const Company = require("./models/Company");
 const TeamMember = require("./models/TeamMember");
 const StockItem = require("./models/StockItem");
 const Category = require("./models/Category");
+const Sale = require("./models/Sale");
 
 // Import email service
 const { sendTeamInvitation, sendWelcomeEmail } = require("./utils/emailService");
@@ -552,6 +553,99 @@ app.delete("/stock-items/:id", async (req, res) => {
     } catch (error) {
         console.error("Delete stock item error:", error);
         res.status(500).json({ message: "Internal server error" });
+    }
+});
+
+// Delete all stock items for a company (reset)
+app.delete("/stock-items/company/:companyId", async (req, res) => {
+    try {
+        const { companyId } = req.params;
+        const company = await Company.findById(companyId);
+        if (!company) {
+            return res.status(404).json({ message: "Company not found" });
+        }
+        const result = await StockItem.deleteMany({ companyId });
+        return res.status(200).json({ message: "Company stock reset", deletedCount: result.deletedCount });
+    } catch (error) {
+        console.error("Reset company stock error:", error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+});
+
+// Sales Endpoints
+
+// Create a sale and decrement stock
+app.post("/sales", async (req, res) => {
+    try {
+        const { companyId, itemId, quantity, price, sellerId } = req.body;
+
+        if (!companyId || !itemId || !quantity || !price) {
+            return res.status(400).json({ message: "companyId, itemId, quantity and price are required" });
+        }
+
+        const company = await Company.findById(companyId);
+        if (!company) {
+            return res.status(404).json({ message: "Company not found" });
+        }
+
+        const item = await StockItem.findById(itemId);
+        if (!item || String(item.companyId) !== String(companyId)) {
+            return res.status(404).json({ message: "Stock item not found for this company" });
+        }
+
+        const saleQty = parseInt(quantity);
+        const salePrice = parseFloat(price);
+        if (Number.isNaN(saleQty) || saleQty <= 0) {
+            return res.status(400).json({ message: "Quantity must be a positive number" });
+        }
+        if (Number.isNaN(salePrice) || salePrice < 0) {
+            return res.status(400).json({ message: "Price must be a non-negative number" });
+        }
+
+        if (item.quantity < saleQty) {
+            return res.status(400).json({ message: "Not enough stock to complete the sale" });
+        }
+
+        // Decrement stock and update status
+        item.quantity = item.quantity - saleQty;
+        if (item.quantity === 0) {
+            item.status = 'Out of Stock';
+        } else if (item.quantity <= 20) {
+            item.status = 'Low Stock';
+        } else {
+            item.status = 'In Stock';
+        }
+        await item.save();
+
+        const total = saleQty * salePrice;
+        const sale = new Sale({ companyId, itemId, sellerId, quantity: saleQty, price: salePrice, total });
+        await sale.save();
+        await sale.populate('itemId', 'name');
+
+        return res.status(201).json({ message: "Sale recorded successfully", sale, updatedItem: item });
+    } catch (error) {
+        console.error("Create sale error:", error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+});
+
+// List sales for a company
+app.get("/sales/:companyId", async (req, res) => {
+    try {
+        const { companyId } = req.params;
+        const company = await Company.findById(companyId);
+        if (!company) {
+            return res.status(404).json({ message: "Company not found" });
+        }
+
+        const sales = await Sale.find({ companyId })
+            .populate('itemId', 'name category')
+            .sort({ createdAt: -1 });
+
+        return res.status(200).json({ message: "Sales retrieved successfully", sales });
+    } catch (error) {
+        console.error("Get sales error:", error);
+        return res.status(500).json({ message: "Internal server error" });
     }
 });
 

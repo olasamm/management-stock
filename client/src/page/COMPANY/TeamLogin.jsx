@@ -27,7 +27,7 @@ const TeamLogin = () => {
     setMessage({ text: '', type: '' });
 
     try {
-              const response = await fetch('https://stock-management-0ywb.onrender.com/team-login', {
+              const response = await fetch('https://management-stock-1.onrender.com/team-login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -44,9 +44,14 @@ const TeamLogin = () => {
         
         setMessage({ text: 'Login successful! Redirecting...', type: 'success' });
         
-        // Redirect to team dashboard
+        // Redirect to company dashboard using companyId
         setTimeout(() => {
-          navigate('/team-dashboard');
+          const companyId = data?.teamMember?.companyId;
+          if (companyId) {
+            navigate(`/company/${companyId}/dashboard`);
+          } else {
+            navigate('/team-dashboard');
+          }
         }, 1500);
       } else {
         setMessage({ text: data.message || 'Login failed', type: 'error' });

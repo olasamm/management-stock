@@ -71,7 +71,7 @@ const AdminSignup = () => {
     setIsLoading(true);
 
     try {
-              const url = "https://stock-management-0ywb.onrender.com/admin/signup";
+              const url = "https://management-stock-1.onrender.com/admin/signup";
       const response = await axios.post(url, formData);
       
       if (response.status === 201) {
